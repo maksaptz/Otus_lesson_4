@@ -1,0 +1,327 @@
+
+
+###########Определение алгоритма с наилучшим сжатием##########################
+###########Отрабатываем навыки работы с созданием томов и установкой параметров. Находим наилучшее сжатие.########
+
+[vagrant@zfs ~]$ sudo -i  ###Повышшаем привелегии до рута
+[root@zfs ~]# lsblk  #####Выводим список дисков
+NAME   MAJ:MIN RM  SIZE RO TYPE MOUNTPOINT
+sda      8:0    0   40G  0 disk 
+`-sda1   8:1    0   40G  0 part /
+sdb      8:16   0  512M  0 disk 
+sdc      8:32   0  512M  0 disk 
+sdd      8:48   0  512M  0 disk 
+sde      8:64   0  512M  0 disk 
+sdf      8:80   0  512M  0 disk 
+sdg      8:96   0  512M  0 disk 
+sdh      8:112  0  512M  0 disk 
+sdi      8:128  0  512M  0 disk 
+[root@zfs ~]# zpool create otus1 mirror /dev/sdb /dev/sdc   #####Создаем пул otus1 с двумя дисками обьединенными в зеркало
+[root@zfs ~]# zpool create otus2 mirror /dev/sdd /dev/sde   #####Создаем пул otus2 с двумя дисками обьединенными в зеркало
+[root@zfs ~]# zpool create otus3 mirror /dev/sdf /dev/sdg   #####Создаем пул otus3 с двумя дисками обьединенными в зеркало
+[root@zfs ~]# zpool create otus4 mirror /dev/sdh /dev/sdi   #####Создаем пул otus4 с двумя дисками обьединенными в зеркало
+[root@zfs ~]# zpool list   #####Проверяем созданные пулы
+NAME    SIZE  ALLOC   FREE  CKPOINT  EXPANDSZ   FRAG    CAP  DEDUP    HEALTH  ALTROOT
+otus1   480M   106K   480M        -         -     0%     0%  1.00x    ONLINE  -
+otus2   480M  91.5K   480M        -         -     0%     0%  1.00x    ONLINE  -
+otus3   480M  91.5K   480M        -         -     0%     0%  1.00x    ONLINE  -
+otus4   480M   106K   480M        -         -     0%     0%  1.00x    ONLINE  -
+[root@zfs ~]# zpool status
+  pool: otus1
+ state: ONLINE
+  scan: none requested
+config:
+
+	NAME        STATE     READ WRITE CKSUM
+	otus1       ONLINE       0     0     0
+	  mirror-0  ONLINE       0     0     0
+	    sdb     ONLINE       0     0     0
+	    sdc     ONLINE       0     0     0
+
+errors: No known data errors
+
+  pool: otus2
+ state: ONLINE
+  scan: none requested
+config:
+
+	NAME        STATE     READ WRITE CKSUM
+	otus2       ONLINE       0     0     0
+	  mirror-0  ONLINE       0     0     0
+	    sdd     ONLINE       0     0     0
+	    sde     ONLINE       0     0     0
+
+errors: No known data errors
+
+  pool: otus3
+ state: ONLINE
+  scan: none requested
+config:
+
+	NAME        STATE     READ WRITE CKSUM
+	otus3       ONLINE       0     0     0
+	  mirror-0  ONLINE       0     0     0
+	    sdf     ONLINE       0     0     0
+	    sdg     ONLINE       0     0     0
+
+errors: No known data errors
+
+  pool: otus4
+ state: ONLINE
+  scan: none requested
+config:
+
+	NAME        STATE     READ WRITE CKSUM
+	otus4       ONLINE       0     0     0
+	  mirror-0  ONLINE       0     0     0
+	    sdh     ONLINE       0     0     0
+	    sdi     ONLINE       0     0     0
+
+errors: No known data errors
+[root@zfs ~]# zfs set compression=lzjb otus1   #####Выставляем тип компрессии:lzjb в пуле:otus1
+[root@zfs ~]# zfs set compression=lz4 otus2    #####Выставляем тип компрессии:lz4 в пуле:otus2
+[root@zfs ~]# zfs set compression=gzip-9 otus3 #####Выставляем тип компрессии:gzip-9 в пуле:otus3
+[root@zfs ~]# zfs set compression=zle otus4    #####Выставляем тип компрессии:zle в пуле:otus4
+[root@zfs ~]# zfs get all | grep compression   #####Проверяем результат
+otus1  compression           lzjb                   local
+otus2  compression           lz4                    local
+otus3  compression           gzip-9                 local
+otus4  compression           zle                    local
+[root@zfs ~]# for i in {1..4}; do wget -P /otus$i https://gutenberg.org/cache/epub/2600/pg2600.converter.log; done   ####запускаем цикл, который скачивает файлы для последующего тестирования компрессии
+--2023-04-11 14:23:08--  https://gutenberg.org/cache/epub/2600/pg2600.converter.log
+Resolving gutenberg.org (gutenberg.org)... 152.19.134.47, 2610:28:3090:3000:0:bad:cafe:47
+Connecting to gutenberg.org (gutenberg.org)|152.19.134.47|:443... connected.
+HTTP request sent, awaiting response... 200 OK
+Length: 40922255 (39M) [text/plaina
+Saving to: '/otus1/pg2600.converter.log'
+
+100%[======================================>] 40,922,255   671KB/s   in 76s    
+
+2023-04-11 14:24:28 (528 KB/s) - '/otus1/pg2600.converter.log' saved [40922255/40922255]
+
+--2023-04-11 14:24:28--  https://gutenberg.org/cache/epub/2600/pg2600.converter.log
+Resolving gutenberg.org (gutenberg.org)... 152.19.134.47, 2610:28:3090:3000:0:bad:cafe:47
+Connecting to gutenberg.org (gutenberg.org)|152.19.134.47|:443... connected.
+HTTP request sent, awaiting response... 200 OK
+Length: 40922255 (39M) [text/plain]
+Saving to: '/otus2/pg2600.converter.log'
+
+100%[======================================>] 40,922,255   966KB/s   in 47s    
+
+2023-04-11 14:25:20 (844 KB/s) - '/otus2/pg2600.converter.log' saved [40922255/40922255]
+
+--2023-04-11 14:25:20--  https://gutenberg.org/cache/epub/2600/pg2600.converter.log
+Resolving gutenberg.org (gutenberg.org)... 152.19.134.47, 2610:28:3090:3000:0:bad:cafe:47
+Connecting to gutenberg.org (gutenberg.org)|152.19.134.47|:443... connected.
+HTTP request sent, awaiting response... 200 OK
+Length: 40922255 (39M) [text/plain]
+Saving to: '/otus3/pg2600.converter.log'
+
+100%[======================================>] 40,922,255   853KB/s   in 64s    
+
+2023-04-11 14:26:30 (620 KB/s) - '/otus3/pg2600.converter.log' saved [40922255/40922255]
+
+--2023-04-11 14:26:30--  https://gutenberg.org/cache/epub/2600/pg2600.converter.log
+Resolving gutenberg.org (gutenberg.org)... 152.19.134.47, 2610:28:3090:3000:0:bad:cafe:47
+Connecting to gutenberg.org (gutenberg.org)|152.19.134.47|:443... connected.
+HTTP request sent, awaiting response... 200 OK
+Length: 40922255 (39M) [text/plain]
+Saving to: '/otus4/pg2600.converter.log'
+
+100%[======================================>] 40,922,255   244KB/s   in 79s    
+
+2023-04-11 14:27:54 (505 KB/s) - '/otus4/pg2600.converter.log' saved [40922255/40922255]
+
+[root@zfs ~]# ls -l /otus*    #####выводим список скачанных файлов
+/otus:
+total 159856
+-rw-r--r--. 1 root root 40922255 Apr  2 08:18 pg2600.converter.log
+-rw-r--r--. 1 root root 40922255 Apr  2 08:18 pg2600.converter.log.1
+-rw-r--r--. 1 root root 40922255 Apr  2 08:18 pg2600.converter.log.2
+-rw-r--r--. 1 root root 40922255 Apr  2 08:18 pg2600.converter.log.3
+
+/otus1:
+total 22047
+-rw-r--r--. 1 root root 40922255 Apr  2 08:18 pg2600.converter.log
+
+/otus2:
+total 17985
+-rw-r--r--. 1 root root 40922255 Apr  2 08:18 pg2600.converter.log
+
+/otus3:
+total 10955
+-rw-r--r--. 1 root root 40922255 Apr  2 08:18 pg2600.converter.log
+
+/otus4:
+total 39991
+-rw-r--r--. 1 root root 40922255 Apr  2 08:18 pg2600.converter.log
+[root@zfs ~]# zfs list     ######Выводим список пулов
+NAME    USED  AVAIL     REFER  MOUNTPOINT
+otus1  21.6M   330M     21.6M  /otus1
+otus2  17.7M   334M     17.6M  /otus2
+otus3  10.8M   341M     10.7M  /otus3
+otus4  39.2M   313M     39.1M  /otus4
+[root@zfs ~]# zfs get all | grep compressratio | grep -v ref    #######С помощью grep выводим параметр уровень сжатия. Мы видим, что алгоритм сжатия: gzip-9 лидирует.
+otus1  compressratio         1.81x                  -
+otus2  compressratio         2.22x                  -
+otus3  compressratio         3.65x                  -
+otus4  compressratio         1.00x                  -
+
+
+#########################Определение настроек пула############################
+###########Для переноса дисков между системами используется функция export/import. Отрабатываем навыки работы с файловой системой ZFS##########
+
+[vagrant@zfs ~]$ sudo -i      ######Повышаем привелегии до уровня рута
+[root@zfs ~]# wget -O archive.tar.gz --no-check-certificate 'https://drive.google.com/u/0/uc?id=1KRBNW33QWqbvbVHa3hLJivOAt60yukkg&export=download'     #####Скачиваем архив
+--2023-04-12 12:25:30--  https://drive.google.com/u/0/uc?id=1KRBNW33QWqbvbVHa3hLJivOAt60yukkg&export=download
+Resolving drive.google.com (drive.google.com)... 142.250.179.142, 2a00:1450:400e:801::200e
+Connecting to drive.google.com (drive.google.com)|142.250.179.142|:443... connected.
+HTTP request sent, awaiting response... 302 Found
+Location: https://drive.google.com/uc?id=1KRBNW33QWqbvbVHa3hLJivOAt60yukkg&export=download [following]
+--2023-04-12 12:25:31--  https://drive.google.com/uc?id=1KRBNW33QWqbvbVHa3hLJivOAt60yukkg&export=download
+Reusing existing connection to drive.google.com:443.
+HTTP request sent, awaiting response... 303 See Other
+Location: https://doc-0c-bo-docs.googleusercontent.com/docs/securesc/ha0ro937gcuc7l7deffksulhg5h7mbp1/55ff7a87hla4pt2c8ocbchbju79mibav/1681305975000/16189157874053420687/*/1KRBNW33QWqbvbVHa3hLJivOAt60yukkg?e=download&uuid=bc307751-2b31-4960-93ad-73b7c9cebf18 [following]
+Warning: wildcards not supported in HTTP.
+--2023-04-12 12:25:40--  https://doc-0c-bo-docs.googleusercontent.com/docs/securesc/ha0ro937gcuc7l7deffksulhg5h7mbp1/55ff7a87hla4pt2c8ocbchbju79mibav/1681305975000/16189157874053420687/*/1KRBNW33QWqbvbVHa3hLJivOAt60yukkg?e=download&uuid=bc307751-2b31-4960-93ad-73b7c9cebf18
+Resolving doc-0c-bo-docs.googleusercontent.com (doc-0c-bo-docs.googleusercontent.com)... 142.251.36.33, 2a00:1450:400e:810::2001
+Connecting to doc-0c-bo-docs.googleusercontent.com (doc-0c-bo-docs.googleusercontent.com)|142.251.36.33|:443... connected.
+HTTP request sent, awaiting response... 200 OK
+Length: 7275140 (6.9M) [application/x-gzip]
+Saving to: 'archive.tar.gz'
+
+67% [=========================>             ] 4,889,781    127KB/s  eta 7s     ^100%[======================================>] 7,275,140    479KB/s   in 21s    
+
+2023-04-12 12:26:01 (343 KB/s) - 'archive.tar.gz' saved [7275140/7275140]
+
+[root@zfs ~]# tar -xzvf archive.tar.gz   ######распаковываем
+zpoolexport/
+zpoolexport/filea
+zpoolexport/fileb
+[root@zfs ~]# zpool import -d zpoolexport/    ######проверяем возможность импорта
+   pool: otus
+     id: 6554193320433390805
+  state: ONLINE
+ action: The pool can be imported using its name or numeric identifier.
+ config:
+
+	otus                         ONLINE
+	  mirror-0                   ONLINE
+	    /root/zpoolexport/filea  ONLINE
+	    /root/zpoolexport/fileb  ONLINE
+[root@zfs ~]# zpool import -d zpoolexport/ otus     ######импортируем пул
+[root@zfs ~]# zpool status      ######проверяем результат
+  pool: otus
+ state: ONLINE
+  scan: none requested
+config:
+
+	NAME                         STATE     READ WRITE CKSUM
+	otus                         ONLINE       0     0     0
+	  mirror-0                   ONLINE       0     0     0
+	    /root/zpoolexport/filea  ONLINE       0     0     0
+	    /root/zpoolexport/fileb  ONLINE       0     0     0
+
+errors: No known data errors
+
+  pool: otus1
+ state: ONLINE
+  scan: none requested
+config:
+
+	NAME        STATE     READ WRITE CKSUM
+	otus1       ONLINE       0     0     0
+	  mirror-0  ONLINE       0     0     0
+	    sdb     ONLINE       0     0     0
+	    sdc     ONLINE       0     0     0
+
+errors: No known data errors
+
+  pool: otus2
+ state: ONLINE
+  scan: none requested
+config:
+
+	NAME        STATE     READ WRITE CKSUM
+	otus2       ONLINE       0     0     0
+	  mirror-0  ONLINE       0     0     0
+	    sdd     ONLINE       0     0     0
+	    sde     ONLINE       0     0     0
+
+errors: No known data errors
+
+  pool: otus3
+ state: ONLINE
+  scan: none requested
+config:
+
+	NAME        STATE     READ WRITE CKSUM
+	otus3       ONLINE       0     0     0
+	  mirror-0  ONLINE       0     0     0
+	    sdf     ONLINE       0     0     0
+	    sdg     ONLINE       0     0     0
+
+errors: No known data errors
+
+  pool: otus4
+ state: ONLINE
+  scan: none requested
+config:
+
+	NAME        STATE     READ WRITE CKSUM
+	otus4       ONLINE       0     0     0
+	  mirror-0  ONLINE       0     0     0
+	    sdh     ONLINE       0     0     0
+	    sdi     ONLINE       0     0     0
+
+errors: No known data errors
+[root@zfs ~]# zfs get available otus      ######определяем размер хранилища  пула otus
+NAME  PROPERTY   VALUE  SOURCE
+otus  available  350M   -
+[root@zfs ~]# zfs get readonly otus       ######определяем тип  пула otus
+NAME  PROPERTY  VALUE   SOURCE
+otus  readonly  off     default
+[root@zfs ~]# zfs get recordsize otus     ######определяем рекомендуемый размер блока  пула otus
+NAME  PROPERTY    VALUE    SOURCE
+otus  recordsize  128K     local
+[root@zfs ~]# zfs get compression otus    ######определяем сжатия пула otus
+NAME  PROPERTY     VALUE     SOURCE
+otus  compression  zle       local
+[root@zfs ~]# zfs get checksum otus	  ######определяем тип контрольной суммы пула otus
+NAME  PROPERTY  VALUE      SOURCE
+otus  checksum  sha256     local
+
+
+
+##############Работа со снапшотом, поиск сообщения от преподавателя############
+##########Для бэкапа используются технологии snapshot. Snapshot можно передавать между хостами и восстанавливать с помощью send/receive. Отрабатываем навыки восстановления snapshot и переноса файла.##########
+
+
+[vagrant@zfs ~]$ sudo -i       #####Повышаем привелегии до уровня рута
+[root@zfs ~]# wget -O otus_task2.file --no-check-certificate "https://drive.google.com/u/0/uc?id=1gH8gCL9y7Nd5Ti3IRmplZPF1XjzxeRAG&export=download"    #####Скачивыем снапшот
+--2023-04-12 12:29:20--  https://drive.google.com/u/0/uc?id=1gH8gCL9y7Nd5Ti3IRmplZPF1XjzxeRAG&export=download
+Resolving drive.google.com (drive.google.com)... 142.250.179.142, 2a00:1450:400e:801::200e
+Connecting to drive.google.com (drive.google.com)|142.250.179.142|:443... connected.
+HTTP request sent, awaiting response... 302 Found
+Location: https://drive.google.com/uc?id=1gH8gCL9y7Nd5Ti3IRmplZPF1XjzxeRAG&export=download [following]
+--2023-04-12 12:29:21--  https://drive.google.com/uc?id=1gH8gCL9y7Nd5Ti3IRmplZPF1XjzxeRAG&export=download
+Reusing existing connection to drive.google.com:443.
+HTTP request sent, awaiting response... 303 See Other
+Location: https://doc-00-bo-docs.googleusercontent.com/docs/securesc/ha0ro937gcuc7l7deffksulhg5h7mbp1/5le8d5d9qd27io5mlgjs40juiajj6653/1681306200000/16189157874053420687/*/1gH8gCL9y7Nd5Ti3IRmplZPF1XjzxeRAG?e=download&uuid=9e8db74b-1461-4f87-9d1d-ff46a21388a3 [following]
+Warning: wildcards not supported in HTTP.
+--2023-04-12 12:29:26--  https://doc-00-bo-docs.googleusercontent.com/docs/securesc/ha0ro937gcuc7l7deffksulhg5h7mbp1/5le8d5d9qd27io5mlgjs40juiajj6653/1681306200000/16189157874053420687/*/1gH8gCL9y7Nd5Ti3IRmplZPF1XjzxeRAG?e=download&uuid=9e8db74b-1461-4f87-9d1d-ff46a21388a3
+Resolving doc-00-bo-docs.googleusercontent.com (doc-00-bo-docs.googleusercontent.com)... 142.251.36.33, 2a00:1450:400e:810::2001
+Connecting to doc-00-bo-docs.googleusercontent.com (doc-00-bo-docs.googleusercontent.com)|142.251.36.33|:443... connected.
+HTTP request sent, awaiting response... 200 OK
+Length: 5432736 (5.2M) [application/octet-stream]
+Saving to: 'otus_task2.file'
+
+100%[======================================>] 5,432,736    611KB/s   in 6.0s   
+
+2023-04-12 12:29:33 (884 KB/s) - 'otus_task2.file' saved [5432736/5432736]
+
+[root@zfs ~]# zfs receive otus/test@today < otus_task2.file      ######Разворачиваем снапшот
+[root@zfs ~]# find /otus/test -name "secret_message"      ######С помощью команды find находим файл с названием "secret_message"
+/otus/test/task1/file_mess/secret_message
+[root@zfs ~]# cat /otus/test/task1/file_mess/secret_message     #####Просматриваем содержимое файла. Находим ссылку на репозиторий в гит.
+https://github.com/sindresorhus/awesome
